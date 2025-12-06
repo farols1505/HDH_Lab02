@@ -1,0 +1,30 @@
+Câu 1: Which registers contain arguments to functions? For example, which register holds 13 in main's call to printf?
+    - Tổng quát: Các thanh ghi dùng để chứa đối số hàm là từ a0 đến a7.
+    - Cụ thể trong trường hợp printf này:
+        + a0: Chứa địa chỉ của chuỗi định dạng (format string).
+        + a1: Chứa giá trị 12 (kết quả đã tính trước của f(8) + 1).
+        + a2: Chứa giá trị 13.
+
+Câu 2: Where is the call to function f in the assembly code for main? Where is the call to g? (Hint: the compiler may inline functions.)
+    - Lời gọi hàm f và g không tồn tại trong mã assembly của main
+    - Lý do: rình biên dịch đã tính toán trước kết quả và thay thế lời gọi hàm bằng giá trị hằng số 12 (kỹ thuật inlining và constant folding).
+
+Câu 3: At what address is the function printf located?
+    - Lệnh nhảy tới 630 (được tính từ 1536(ra)), nên địa chỉ printf là 0x630
+
+Câu 4: What value is in the register ra just after the jalr to printf in main? 
+    - Ngay sau khi lệnh jalr thực thi, thanh ghi ra sẽ chứa địa chỉ của dòng lệnh tiếp theo.
+        + Dòng lệnh hiện tại là offset 34. 
+        + Dòng lệnh tiếp theo là `34 + 4 = 38`.
+        + Vậy giá trị trong `ra` là `0x38` (hoặc địa chỉ đầy đủ tương ứng trong bộ nhớ ảo).
+
+Câu 5: Run the following code.
+    unsigned int i = 0x00646c72; 
+    printf("H%x Wo%s", 57616, (char *) &i); 
+What is the output? Use ASCII table to map bytes to characters.
+The output depends on that fact that the RISC-V is little-endian. If the RISC-V were instead big-endian what would you set i to in order to yield the same output? Would you need to change 57616 to a different value? 
+    - 
+
+Câu 6: In the following code, what is going to be printed after 'y='? (note: the answer is not a specific value.) Why does this happen? 
+    - Output: Một giá trị rác (ngẫu nhiên).
+    - Lý do: Hàm printf đọc số lượng tham số dựa trên số lượng ký tự định dạng như %d. Ở đây có 2 ký tự %d nên nó sẽ đọc thanh ghi a1 và a2. Do mã nguồn không cung cấp tham số thứ 2, thanh ghi a2 không được khởi tạo giá trị mới, dẫn đến việc printf in ra dữ liệu rác còn lưu lại trong thanh ghi này.
