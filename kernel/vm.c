@@ -449,3 +449,34 @@ copyinstr(pagetable_t pagetable, char *dst, uint64 srcva, uint64 max)
     return -1;
   }
 }
+
+void
+vmprint_recursive(pagetable_t pagetable, int level)
+{
+  // có 2^9 = 512 PTEs trong một page table.
+  for(int i = 0; i < 512; i++){
+    pte_t pte = pagetable[i];
+    if(pte & PTE_V){
+      // in ra khoảng trắng dựa trên level
+      for(int j = 0; j <= level; j++){
+        printf(" ..");
+      }
+      // in ra index PTE, giá trị và physical address
+      printf("%d: pte %p pa %p\n", i, pte, PTE2PA(pte));
+      
+      // nếu PTE này trỏ đến một page table con (không phải là leaf)
+      if((pte & (PTE_R|PTE_W|PTE_X)) == 0){
+        uint64 child = PTE2PA(pte);
+        vmprint_recursive((pagetable_t)child, level + 1);
+      }
+    }
+  }
+}
+
+// debug
+void
+vmprint(pagetable_t pagetable)
+{
+  printf("page table %p\n", pagetable);
+  vmprint_recursive(pagetable, 0);
+}
