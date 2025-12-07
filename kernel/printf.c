@@ -15,6 +15,7 @@
 #include "defs.h"
 #include "proc.h"
 
+
 volatile int panicked = 0;
 
 // lock to avoid interleaving concurrent printf's.
@@ -123,6 +124,7 @@ panic(char *s)
   printf(s);
   printf("\n");
   panicked = 1; // freeze uart output from other CPUs
+  backtrace(); // Print stack backtrace on panic
   for(;;)
     ;
 }
@@ -132,4 +134,27 @@ printfinit(void)
 {
   initlock(&pr.lock, "pr");
   pr.locking = 1;
+}
+
+void
+backtrace(void)
+{
+  printf("backtrace:\n");
+  uint64 fp = r_fp(); // Get the current frame pointer
+  uint64 top = PGROUNDUP(fp); // Get the top of the current stack page
+  uint64 bottom = PGROUNDDOWN(fp); // Get the bottom of the current stack page
+
+  // Loop through stack frames if fp is within the current stack page
+  while(fp >= bottom && fp < top) {
+    
+    // Get the return address (ra) from the current frame
+    uint64 ra = *(uint64*)(fp - 8);
+    
+    // Print the return address
+    printf("%p\n", ra);
+    
+    // Get the previous frame pointer
+    // Assumes the previous frame pointer is stored at fp - 16
+    fp = *(uint64*)(fp - 16);
+  }
 }
