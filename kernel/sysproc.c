@@ -71,10 +71,44 @@ sys_sleep(void)
 
 
 #ifdef LAB_PGTBL
-int
+uint64
 sys_pgaccess(void)
 {
-  // lab pgtbl: your code here.
+  uint64 start_addr;
+  int len;
+  uint64 buffer_addr; 
+  
+  argaddr(0, &start_addr);
+  argint(1, &len);
+  argaddr(2, &buffer_addr);
+
+  // Prevent bitmask overload
+  if(len > 32 || len < 0) 
+    return -1;
+
+  struct proc *p = myproc();
+  
+  unsigned int bitmask = 0; 
+  pte_t *pte;
+
+  for(int i = 0; i < len; i++) {
+    uint64 va = start_addr + i * PGSIZE;
+    
+    if(va >= MAXVA) continue;
+
+    pte = walk(p->pagetable, va, 0);
+    
+    if(pte != 0 && (*pte & PTE_V) && (*pte & PTE_A)) {
+      bitmask |= (1 << i);
+      // Clear access bit
+      *pte &= ~PTE_A; 
+    }
+  }
+
+  // copyout results
+  if(copyout(p->pagetable, buffer_addr, (char *)&bitmask, sizeof(bitmask)) < 0)
+    return -1;
+
   return 0;
 }
 #endif
