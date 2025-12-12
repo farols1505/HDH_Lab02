@@ -3,10 +3,10 @@ new file mode 100644
 index 0000000..e69de29
 diff --git a/answers-traps.txt b/answers-traps.txt
 new file mode 100644
-index 0000000..1a67c96
+index 0000000..bee7ea4
 --- /dev/null
 +++ b/answers-traps.txt
-@@ -0,0 +1,38 @@
+@@ -0,0 +1,40 @@
 +Câu 1: Which registers contain arguments to functions? For example, which register holds 13 in main's call to printf?
 +    - Tổng quát: Các thanh ghi dùng để chứa đối số hàm là từ a0 đến a7.
 +    - Cụ thể trong trường hợp printf này:
@@ -16,7 +16,7 @@ index 0000000..1a67c96
 +
 +Câu 2: Where is the call to function f in the assembly code for main? Where is the call to g? (Hint: the compiler may inline functions.)
 +    - Lời gọi hàm f và g không tồn tại trong mã assembly của main
-+    - Lý do: rình biên dịch đã tính toán trước kết quả và thay thế lời gọi hàm bằng giá trị hằng số 12 (kỹ thuật inlining và constant folding).
++    - Lý do: Trình biên dịch đã tính toán trước kết quả và thay thế lời gọi hàm bằng giá trị hằng số 12 (kỹ thuật inlining và constant folding).
 +
 +Câu 3: At what address is the function printf located?
 +    - Lệnh nhảy tới 630 (được tính từ 1536(ra)), nên địa chỉ printf là 0x630
@@ -45,6 +45,8 @@ index 0000000..1a67c96
 +Câu 6: In the following code, what is going to be printed after 'y='? (note: the answer is not a specific value.) Why does this happen? 
 +    - Output: Một giá trị rác (ngẫu nhiên).
 +    - Lý do: Hàm printf đọc số lượng tham số dựa trên số lượng ký tự định dạng như %d. Ở đây có 2 ký tự %d nên nó sẽ đọc thanh ghi a1 và a2. Do mã nguồn không cung cấp tham số thứ 2, thanh ghi a2 không được khởi tạo giá trị mới, dẫn đến việc printf in ra dữ liệu rác còn lưu lại trong thanh ghi này.
++
++Giải thích chi tiết cho từng câu hỏi được trình bày trong báo cáo phần traps
 \ No newline at end of file
 diff --git a/kernel/defs.h b/kernel/defs.h
 index a3c962b..d914164 100644
