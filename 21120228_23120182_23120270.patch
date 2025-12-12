@@ -129,14 +129,14 @@ index 20a01db..10673e3 100644
  
  #define MSTATUS_MPP_MASK (3L << 11) // previous mode.
 diff --git a/kernel/sysproc.c b/kernel/sysproc.c
-index 3b4d5bd..734bc71 100644
+index 3b4d5bd..6f57e72 100644
 --- a/kernel/sysproc.c
 +++ b/kernel/sysproc.c
-@@ -53,7 +53,7 @@ sys_sleep(void)
- {
+@@ -54,6 +54,8 @@ sys_sleep(void)
    int n;
    uint ticks0;
--
+ 
++  backtrace();
 +  
    argint(0, &n);
    if(n < 0)
