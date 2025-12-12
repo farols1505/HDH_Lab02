@@ -1,3 +1,6 @@
+diff --git a/21120228_23120182_23120270.patch b/21120228_23120182_23120270.patch
+new file mode 100644
+index 0000000..e69de29
 diff --git a/answers-traps.txt b/answers-traps.txt
 new file mode 100644
 index 0000000..1a67c96
@@ -56,7 +59,7 @@ index a3c962b..d914164 100644
  // proc.c
  int             cpuid(void);
 diff --git a/kernel/printf.c b/kernel/printf.c
-index 1a50203..80a3fd1 100644
+index 1a50203..19a1f3b 100644
 --- a/kernel/printf.c
 +++ b/kernel/printf.c
 @@ -15,6 +15,7 @@
@@ -67,14 +70,14 @@ index 1a50203..80a3fd1 100644
  volatile int panicked = 0;
  
  // lock to avoid interleaving concurrent printf's.
-@@ -123,6 +124,7 @@ panic(char *s)
+@@ -122,6 +123,7 @@ panic(char *s)
+   printf("panic: ");
    printf(s);
    printf("\n");
-   panicked = 1; // freeze uart output from other CPUs
 +  backtrace(); // Print stack backtrace on panic
+   panicked = 1; // freeze uart output from other CPUs
    for(;;)
      ;
- }
 @@ -133,3 +135,26 @@ printfinit(void)
    initlock(&pr.lock, "pr");
    pr.locking = 1;
@@ -124,15 +127,15 @@ index 20a01db..10673e3 100644
  
  #define MSTATUS_MPP_MASK (3L << 11) // previous mode.
 diff --git a/kernel/sysproc.c b/kernel/sysproc.c
-index 3b4d5bd..ddd3d65 100644
+index 3b4d5bd..734bc71 100644
 --- a/kernel/sysproc.c
 +++ b/kernel/sysproc.c
-@@ -54,6 +54,8 @@ sys_sleep(void)
+@@ -53,7 +53,7 @@ sys_sleep(void)
+ {
    int n;
    uint ticks0;
- 
-+  backtrace(); // Call backtrace to print stack trace when sleep is invoked
-+
+-
++  
    argint(0, &n);
    if(n < 0)
      n = 0;
