@@ -1,0 +1,151 @@
+diff --git a/answers-traps.txt b/answers-traps.txt
+new file mode 100644
+index 0000000..1a67c96
+--- /dev/null
++++ b/answers-traps.txt
+@@ -0,0 +1,38 @@
++Câu 1: Which registers contain arguments to functions? For example, which register holds 13 in main's call to printf?
++    - Tổng quát: Các thanh ghi dùng để chứa đối số hàm là từ a0 đến a7.
++    - Cụ thể trong trường hợp printf này:
++        + a0: Chứa địa chỉ của chuỗi định dạng (format string).
++        + a1: Chứa giá trị 12 (kết quả đã tính trước của f(8) + 1).
++        + a2: Chứa giá trị 13.
++
++Câu 2: Where is the call to function f in the assembly code for main? Where is the call to g? (Hint: the compiler may inline functions.)
++    - Lời gọi hàm f và g không tồn tại trong mã assembly của main
++    - Lý do: rình biên dịch đã tính toán trước kết quả và thay thế lời gọi hàm bằng giá trị hằng số 12 (kỹ thuật inlining và constant folding).
++
++Câu 3: At what address is the function printf located?
++    - Lệnh nhảy tới 630 (được tính từ 1536(ra)), nên địa chỉ printf là 0x630
++
++Câu 4: What value is in the register ra just after the jalr to printf in main? 
++    - Ngay sau khi lệnh jalr thực thi, thanh ghi ra sẽ chứa địa chỉ của dòng lệnh tiếp theo.
++        + Dòng lệnh hiện tại là offset 34. 
++        + Dòng lệnh tiếp theo là `34 + 4 = 38`.
++        + Vậy giá trị trong `ra` là `0x38` (hoặc địa chỉ đầy đủ tương ứng trong bộ nhớ ảo).
++
++Câu 5: Run the following code.
++    unsigned int i = 0x00646c72; 
++    printf("H%x Wo%s", 57616, (char *) &i); 
++What is the output? Use ASCII table to map bytes to characters.
++The output depends on that fact that the RISC-V is little-endian. If the RISC-V were instead big-endian what would you set i to in order to yield the same output? Would you need to change 57616 to a different value? 
++    - Output: He110 World
++    - Nếu RISC-V là Big-endian ta cần đặt i = 0x726c6400
++        + Để in ra cùng kết quả "World", thứ tự các byte trong bộ nhớ **bắt buộc** vẫn phải là: `0x72` ('r'), `0x6c` ('l'), `0x64` ('d'), `0x00` (theo chiều tăng dần của địa chỉ nhớ).
++        + Trong kiến trúc **Big-endian** (byte trọng số cao nằm ở địa chỉ thấp), byte đầu tiên trong bộ nhớ chính là byte cao nhất (MSB) của số nguyên.
++        + Do đó, để byte đầu tiên là `0x72`, ta phải đặt nó làm byte cao nhất của số `i`.
++        + Sắp xếp lại: MSB là `72`, tiếp theo `6c`, `64`, và LSB là `00`.
++        -> Kết quả: `0x726c6400`.
++    - Đối với giá trị 57616 ta không cần thay đổi để cho ra cùng kết quả.
++        + Hàm printf với định dạng %x chỉ đơn giản lấy giá trị đó và chuyển đổi sang dạng hiển thị hex (e110). Nó không quan tâm đến việc các byte của số đó nằm như thế nào trong RAM. Do đó, giá trị này giữ nguyên.
++
++Câu 6: In the following code, what is going to be printed after 'y='? (note: the answer is not a specific value.) Why does this happen? 
++    - Output: Một giá trị rác (ngẫu nhiên).
++    - Lý do: Hàm printf đọc số lượng tham số dựa trên số lượng ký tự định dạng như %d. Ở đây có 2 ký tự %d nên nó sẽ đọc thanh ghi a1 và a2. Do mã nguồn không cung cấp tham số thứ 2, thanh ghi a2 không được khởi tạo giá trị mới, dẫn đến việc printf in ra dữ liệu rác còn lưu lại trong thanh ghi này.
+\ No newline at end of file
+diff --git a/kernel/defs.h b/kernel/defs.h
+index a3c962b..d914164 100644
+--- a/kernel/defs.h
++++ b/kernel/defs.h
+@@ -80,6 +80,7 @@ int             pipewrite(struct pipe*, uint64, int);
+ void            printf(char*, ...);
+ void            panic(char*) __attribute__((noreturn));
+ void            printfinit(void);
++void            backtrace(void);    // print a stack backtrace
+ 
+ // proc.c
+ int             cpuid(void);
+diff --git a/kernel/printf.c b/kernel/printf.c
+index 1a50203..80a3fd1 100644
+--- a/kernel/printf.c
++++ b/kernel/printf.c
+@@ -15,6 +15,7 @@
+ #include "defs.h"
+ #include "proc.h"
+ 
++
+ volatile int panicked = 0;
+ 
+ // lock to avoid interleaving concurrent printf's.
+@@ -123,6 +124,7 @@ panic(char *s)
+   printf(s);
+   printf("\n");
+   panicked = 1; // freeze uart output from other CPUs
++  backtrace(); // Print stack backtrace on panic
+   for(;;)
+     ;
+ }
+@@ -133,3 +135,26 @@ printfinit(void)
+   initlock(&pr.lock, "pr");
+   pr.locking = 1;
+ }
++
++void
++backtrace(void)
++{
++  printf("backtrace:\n");
++  uint64 fp = r_fp(); // Get the current frame pointer
++  uint64 top = PGROUNDUP(fp); // Get the top of the current stack page
++  uint64 bottom = PGROUNDDOWN(fp); // Get the bottom of the current stack page
++
++  // Loop through stack frames if fp is within the current stack page
++  while(fp >= bottom && fp < top) {
++    
++    // Get the return address (ra) from the current frame
++    uint64 ra = *(uint64*)(fp - 8);
++    
++    // Print the return address
++    printf("%p\n", ra);
++    
++    // Get the previous frame pointer
++    // Assumes the previous frame pointer is stored at fp - 16
++    fp = *(uint64*)(fp - 16);
++  }
++}
+\ No newline at end of file
+diff --git a/kernel/riscv.h b/kernel/riscv.h
+index 20a01db..10673e3 100644
+--- a/kernel/riscv.h
++++ b/kernel/riscv.h
+@@ -9,6 +9,15 @@ r_mhartid()
+   return x;
+ }
+ 
++// return the value of the fp register.
++static inline uint64
++r_fp()
++{
++  uint64 x;
++  asm volatile("mv %0, s0" : "=r" (x));
++  return x;
++}
++
+ // Machine Status Register, mstatus
+ 
+ #define MSTATUS_MPP_MASK (3L << 11) // previous mode.
+diff --git a/kernel/sysproc.c b/kernel/sysproc.c
+index 3b4d5bd..ddd3d65 100644
+--- a/kernel/sysproc.c
++++ b/kernel/sysproc.c
+@@ -54,6 +54,8 @@ sys_sleep(void)
+   int n;
+   uint ticks0;
+ 
++  backtrace(); // Call backtrace to print stack trace when sleep is invoked
++
+   argint(0, &n);
+   if(n < 0)
+     n = 0;
+diff --git a/user/call.c b/user/call.c
+index f725dcb..54d007a 100644
+--- a/user/call.c
++++ b/user/call.c
+@@ -12,6 +12,6 @@ int f(int x) {
+ }
+ 
+ void main(void) {
+-  printf("%d %d\n", f(8)+1, 13);
+-  exit(0);
++  unsigned int i = 0x00646c72; 
++  printf("H%x Wo%s", 57616, (char *) &i);
+ }
