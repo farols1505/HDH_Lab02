@@ -328,6 +328,34 @@ sys_open(void)
       return -1;
     }
     ilock(ip);
+    if(ip->type == T_SYMLINK && !(omode & O_NOFOLLOW)){
+      int depth = 0;
+      // lap toi da 10 lan
+      while(ip->type == T_SYMLINK){
+        if(depth >= 10){
+          iunlockput(ip);
+          end_op();
+          return -1;
+        }
+        char target[MAXPATH];
+        int n = readi(ip, 0, (uint64)target, 0, MAXPATH);
+        if(n < 0){
+          iunlockput(ip);
+          end_op();
+          return -1;
+        }
+        target[n] = 0; // ket thuc chuoi
+
+        iunlockput(ip); 
+        ip = namei(target); // tim inode moi
+        if(ip == 0){
+          end_op();
+          return -1;
+        }
+        ilock(ip); // khoa inode moi
+        depth++;
+      }
+    }
     if(ip->type == T_DIR && omode != O_RDONLY){
       iunlockput(ip);
       end_op();
@@ -501,5 +529,33 @@ sys_pipe(void)
     fileclose(wf);
     return -1;
   }
+  return 0;
+}
+
+uint64 
+sys_symlink(void) 
+{
+  char target[MAXPATH], path[MAXPATH];
+  struct inode *ip;
+
+  if(argstr(0, target, MAXPATH) < 0 || argstr(1, path, MAXPATH) < 0)
+    return -1;
+
+  begin_op();
+  ip = create(path, T_SYMLINK, 0, 0); // tao inode
+  if(ip == 0){
+    end_op();
+    return -1;
+  }
+
+  // ghi duong dan target
+  if(writei(ip, 0, (uint64)target, 0, strlen(target)) != strlen(target)){
+    iunlockput(ip);
+    end_op();
+    return -1;
+  }
+
+  iunlockput(ip);
+  end_op();
   return 0;
 }
